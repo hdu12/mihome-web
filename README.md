@@ -5,6 +5,9 @@
 后端常驻在 Docker 里，手机、平板、电脑浏览器打开就能用——不用开着 Windows 电脑，定时任务也不再依赖"程序必须运行中"。
 
 底层复用原项目的 `app/core`（米家 API 适配层、设备规格解析、定时判定），未重写任何米家协议逻辑。
+## 截图
+<img width="1700" height="1120" alt="image" src="https://github.com/user-attachments/assets/2cee1fa7-5205-4d09-b65a-26b4595c0283" />
+<img width="1687" height="1116" alt="image" src="https://github.com/user-attachments/assets/aab29f7e-b723-4615-87e2-429be62e8207" />
 
 ## 快速开始
 
