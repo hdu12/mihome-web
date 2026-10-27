@@ -47,7 +47,7 @@ cp .env.example .env    # 填 WEB_TOKEN
 ./run-local.sh          # Windows 直接双击 start.bat
 ```
 
-监听 `0.0.0.0:9778`，同一 WiFi 下的手机、车机可以用 `http://<本机IP>:9778/?token=口令` 访问。
+监听 `0.0.0.0:9778`，同一 WiFi 下的可以用 `http://<本机IP>:9778/?token=口令` 访问。
 
 两个脚本最终都调用 `run_local.py`，`.env` 解析和数据目录规则只有这一份实现，避免 shell 与批处理各自漂移。
 
@@ -141,7 +141,7 @@ docker-compose.yml           内网/本地
 docker-compose.prod.yml      公网（应用 + Caddy）
 ```
 
-## 公网访问（车机场景）
+## 公网访问
 
 **先记住一件事：米家设备的控制 100% 走云端 HTTPS，不走局域网。**
 所以后端**不需要跑在家里**——丢到任意一台 VPS 上就行，家里什么都不用开。
@@ -202,23 +202,8 @@ docker compose -f docker-compose.prod.yml up -d --build
    python -c "import secrets;print(secrets.token_urlsafe(32))"
    ```
 2. **必须走 HTTPS**。HTTP 下口令在链路上明文裸奔，中间任何一跳都能读到。
-3. **车机被他人接触 = 口令泄露**。口令存在车机 localStorage，洗车、代驾、借车都能直接读走。
-   - 车经常外借 → 加 Cloudflare Access 的 Email OTP 那一层
-   - 卖车/借车前 → 清一次浏览器数据，然后换口令重启服务
-4. **`./data` 目录含米家凭据**，别提交 git、别打包分享、别丢到公共网盘。
-5. 公网 IP 会在几十小时内被扫描器发现，这是常态。上面那几条不做好，等于把家门钥匙挂在门上。
-
-## 车机浏览器兼容
-
-车机 WebView 通常落后手机好几代。前端已针对性降级：
-
-- 不用 `?.` / `??` / `CSS.escape` / 对象展开（老 Chromium 上是**语法错误**，整份脚本不执行，页面白屏）
-- 补了 `NodeList.forEach` polyfill（要 Chrome 51+）
-- CSS 不用 `inset` 简写
-
-仍需 Chrome 55+（2016 年后）。若车机更老，打开是白屏，可先在手机浏览器验证功能是否正常，再考虑换车机。
-
-界面按 5 英寸左右做了响应式：卡片单列、抽屉占满屏、触控目标 ≥ 44px。
+3. **`./data` 目录含米家凭据**，别提交 git、别打包分享、别丢到公共网盘。
+4. 公网 IP 会在几十小时内被扫描器发现，这是常态。上面那几条不做好，等于把家门钥匙挂在门上。
 
 ## 常见问题
 
