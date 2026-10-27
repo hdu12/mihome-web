@@ -8,6 +8,16 @@
 
 ## 快速开始
 
+**方式一：直接拉现成镜像**（不想在本机构建，NAS 上最快）：
+
+```bash
+docker pull hdu123/mihome-web:latest
+```
+
+镜像由 GitHub Actions 在每次代码更新后自动构建推送。
+
+**方式二：本地构建**：
+
 ```bash
 # 建议先设访问口令（全权限米家凭据，别裸奔）
 echo 'WEB_TOKEN=换个你自己的口令' > .env
