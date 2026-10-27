@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>米家控制台</title>
+<link rel="stylesheet" href="style.css">
+<!-- 主题要在首次绘制前定下来，用外部文件而不是内联脚本：
+     CSP 的 script-src 'self' 会拦掉一切内联脚本，而开 unsafe-inline 等于对 XSS 白开门 -->
+<script src="theme.js"></script>
+</head>
+<body>
+
+<!-- 口令闸门：车机上敲 ?token= 太难受，输入一次即存本地 -->
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gate-form">
+    <h2>访问口令</h2>
+    <p class="muted small">输入服务端配置的 WEB_TOKEN，只需一次。</p>
+    <input type="password" id="gate-input" placeholder="访问口令"
+           autocomplete="current-password" autocapitalize="off" autocorrect="off">
+    <button class="btn primary" type="submit" id="gate-submit">进入</button>
+    <p class="gate-err" id="gate-err" hidden>口令不正确</p>
+  </form>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot" id="status-dot"></span>
+    <strong>米家控制台</strong>
+  </div>
+  <div class="topbar-right">
+    <span class="muted small" id="updated"></span>
+    <button class="btn ghost" id="btn-theme" title="切换白天/夜间模式">夜间</button>
+    <button class="btn ghost" id="btn-refresh" title="立即刷新">刷新</button>
+    <button class="btn ghost" id="btn-logout" hidden>退出登录</button>
+  </div>
+</header>
+
+<main>
+  <!-- 登录 -->
+  <section id="view-login" class="card login-card" hidden>
+    <h2>扫码登录米家</h2>
+    <p class="muted">用米家 App 扫描下方二维码。登录凭据会保存在服务器的数据卷里，长期有效。</p>
+    <div class="qr-box">
+      <div class="qr-frame" id="qr-frame"><span class="muted small">正在生成…</span></div>
+    </div>
+    <p class="muted small" id="login-tip"></p>
+  </section>
+
+  <!-- 主界面 -->
+  <section id="view-main" hidden>
+    <nav class="tabs">
+      <button class="tab active" data-tab="devices">设备</button>
+      <button class="tab" data-tab="scenes">场景</button>
+      <button class="tab" data-tab="schedules">定时</button>
+      <button class="tab" data-tab="voice">小爱</button>
+    </nav>
+
+    <div class="tabpane active" id="pane-devices">
+      <div class="toolbar">
+        <label class="check"><input type="checkbox" id="hide-switch"> 隐藏开关设备</label>
+        <label class="check"><input type="checkbox" id="hide-grouped"> 隐藏灯组内的单灯</label>
+        <label class="check"><input type="checkbox" id="hide-noctl"> 隐藏无开关设备</label>
+        <label class="check"><input type="checkbox" id="hide-offline"> 隐藏离线设备</label>
+      </div>
+      <div class="filter-hint muted small" id="filter-hint"></div>
+      <div id="device-groups"></div>
+    </div>
+
+    <div class="tabpane" id="pane-scenes">
+      <div id="scene-list" class="grid"></div>
+    </div>
+
+    <div class="tabpane" id="pane-schedules">
+      <form id="schedule-form" class="card">
+        <h3>添加定时任务</h3>
+        <div class="form-row">
+          <select id="sch-device" required></select>
+          <input type="time" id="sch-time" required>
+          <select id="sch-action">
+            <option value="on">打开</option>
+            <option value="off">关闭</option>
+          </select>
+          <button class="btn primary" type="submit">添加</button>
+        </div>
+        <p class="muted small">每天在该时刻执行一次。服务未运行或已错过的时间点不会补执行。</p>
+      </form>
+      <div id="schedule-list" class="list"></div>
+    </div>
+
+    <div class="tabpane" id="pane-voice">
+      <div class="card">
+        <h3>小爱语音指令</h3>
+        <div class="form-row">
+          <select id="voice-device"></select>
+        </div>
+        <div class="form-row">
+          <input type="text" id="voice-text" placeholder="例如：打开客厅的灯" autocomplete="off">
+          <button class="btn primary" id="btn-voice">发送</button>
+        </div>
+        <p class="muted small">指令会下发给选中的在线小爱音箱执行。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 设备详情抽屉 -->
+<div class="drawer-mask" id="drawer-mask" hidden></div>
+<aside class="drawer" id="drawer" hidden>
+  <div class="drawer-head">
+    <div>
+      <h3 id="drawer-title">设备</h3>
+      <span class="muted small" id="drawer-sub"></span>
+    </div>
+    <button class="btn ghost" id="drawer-close">关闭</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

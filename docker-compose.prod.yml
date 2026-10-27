@@ -1,0 +1,75 @@
+# 公网部署：应用 + Caddy（自动 HTTPS）
+#
+# 前置条件：
+#   1. 一台有公网 IP 的机器（家里宽带的公网 IP，或直接一台 VPS）
+#   2. 一个域名，A 记录指向该 IP
+#   3. 80 / 443 端口可达（Let's Encrypt 验证要用）
+#
+# 用法：
+#   cp .env.example .env      # 填 DOMAIN 和 WEB_TOKEN
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# 没有公网 IP 的话看 deploy/CLOUDFLARE-TUNNEL.md
+
+services:
+  mihome-web:
+    build:
+      context: .
+      args:
+        # 基础镜像与 apt 源。境外机器可以注释掉，走 Docker Hub 官方源。
+        PYTHON_BASE: "${PYTHON_BASE:-docker.m.daocloud.io/library/python:3.12-slim}"
+        DEBIAN_MIRROR: "${DEBIAN_MIRROR:-mirrors.aliyun.com}"
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.org/simple}"
+    image: mihome-web:latest
+    container_name: mihome-web
+    restart: unless-stopped
+    # 注意：不映射端口到宿主机。只能经 Caddy 访问，
+    # 避免有人绕过 HTTPS 直连明文 9778 端口。
+    expose:
+      - "9778"
+    environment:
+      TZ: Asia/Shanghai
+      WEB_TOKEN: "${WEB_TOKEN:?请在 .env 里设置 WEB_TOKEN}"
+      POLL_INTERVAL: "15"
+      LOG_LEVEL: INFO
+      # 反代后面必须开启：限流按真实客户端 IP 计数
+      TRUST_PROXY: "1"
+      # 拒绝任何非 HTTPS 请求，防止反代漏配 TLS 还浑然不知。
+      # 依赖 Caddy 传 X-Forwarded-Proto，它已经配了。
+      FORCE_HTTPS: "1"
+      # HSTS 由 Caddy 发（deploy/Caddyfile），容器这边不发：
+      # 容器只看见明文，判断不了证书能撑多久，误发就是不可撤销的。
+      HSTS_MAX_AGE: "0"
+      MAX_FAILURES: "6"
+      LOCK_SECONDS: "1800"
+    volumes:
+      # 默认项目目录下的 ./data；想把数据放到绝对路径就在 .env 里设 DATA_DIR
+      - "${DATA_DIR:-./data}:/data"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9778/healthz', timeout=4).read()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: mihome-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: "${DOMAIN:?请在 .env 里设置 DOMAIN}"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - mihome-web
+
+volumes:
+  caddy_data:
+  caddy_config:

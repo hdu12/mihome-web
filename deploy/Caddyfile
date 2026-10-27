@@ -1,0 +1,35 @@
+# Caddy 反代配置：自动申请/续期 Let's Encrypt 证书，无需手写 HTTPS。
+#
+# 使用前把 .env 里的 DOMAIN 设成解析到本机的域名，例如
+#   DOMAIN=mihome.example.com
+#
+# 证书申请需要公网 80/443 可达（HTTP-01 验证）。若 80 被封，改用 DNS-01
+# 插件，或走 Cloudflare Tunnel（见 deploy/CLOUDFLARE-TUNNEL.md）。
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy mihome-web:9778 {
+		# 真实来源 IP 与协议必须透传：
+		#   X-Forwarded-For   → 后端限流按真实客户端计数，否则一次误输
+		#                       会把反代地址锁死，所有人都登不进来
+		#   X-Forwarded-Proto → 后端 FORCE_HTTPS 靠它判断是否已走 TLS
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+
+	# 设备状态、二维码、口令都是私密数据，禁止中间层缓存。
+	# HSTS 放在反代这层发：它才是清楚证书能不能长期续上的一方。
+	# 后端的 HSTS_MAX_AGE 保持 0，避免两边各发一个头。
+	header {
+		Cache-Control "no-store"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

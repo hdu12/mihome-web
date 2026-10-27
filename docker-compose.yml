@@ -1,0 +1,65 @@
+services:
+  mihome-web:
+    # NAS 的图形界面（群晖 Container Manager 的项目）填不了 --build-arg，
+    # 所以把构建参数放这里，改 .env 里的 PIP_INDEX_URL 就能换源。
+    # 国内网络建议设为 https://mirrors.aliyun.com/pypi/simple/
+    # （清华源缺 mijiaAPI 这个包，实测不可用）
+    build:
+      context: .
+      args:
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://pypi.org/simple}"
+        # 基础镜像地址。国内直连 Docker Hub 拉不动，NAS 自带的加速器又可能
+        # 需要登录（飞牛的 docker.fnnas.com 会返回 401 且没有 WWW-Authenticate，
+        # 报错是 failed to resolve source metadata）。
+        # 默认走 DaoCloud 公共源，实测可用。换源改 .env 里的 PYTHON_BASE。
+        PYTHON_BASE: "${PYTHON_BASE:-docker.m.daocloud.io/library/python:3.12-slim}"
+        # Debian apt 源。留空则用官方源（境外机器适用）。
+        DEBIAN_MIRROR: "${DEBIAN_MIRROR:-mirrors.aliyun.com}"
+    image: mihome-web:latest
+    container_name: mihome-web
+    restart: unless-stopped
+    # 容器进程的 uid/gid。镜像默认 10001，这里覆盖成「./data 目录的属主」，
+    # 读写就不再需要任何提权操作——容器全程非 root。
+    # 查法：SSH 进 NAS，ls -nd ./data，第一列数字就是 uid 和 gid。
+    # 或者反过来：宿主机上 chown -R 10001:10001 ./data，这两行就不用写了。
+    user: "${PUID:-10001}:${PGID:-10001}"
+    ports:
+      # 默认宿主机 9778 → 容器 9778。与其它服务冲突时在 .env 里改 PORT
+      - "${PORT:-9778}:9778"
+    environment:
+      # 定时任务按本地时间判定，必须与你的时区一致。
+      # 容器默认 UTC，不设的话"每天 7:00 开灯"会在北京时间 15:00 触发。
+      TZ: Asia/Shanghai
+
+      # 全权限米家账号凭据跑在容器里，务必设置访问口令。
+      # 浏览器首次访问需带 ?token=xxx，之后存在 localStorage。
+      # 留空 = 无鉴权，只适合只监听 127.0.0.1 的场景。
+      WEB_TOKEN: "${WEB_TOKEN:-}"
+
+      # 状态轮询间隔（秒）。调大减少云端请求，调小刷新更及时
+      POLL_INTERVAL: "15"
+      LOG_LEVEL: INFO
+
+      # 前面挂了 Lucky / Nginx / Caddy 之类的反代时保持 1：
+      # 不开的话每个请求的来源 IP 都是反代地址，口令输错一次就把所有人
+      # 一起锁 30 分钟。反代那边必须传 X-Forwarded-For。
+      # 只在内网直连、前面没有反代时才设成 0（设 1 时客户端能伪造该头，
+      # 从而绕过按 IP 的限流——所以别把它暴露到拿不准来路的地方）。
+      TRUST_PROXY: "${TRUST_PROXY:-1}"
+
+      # 容器只监听 HTTP，TLS 交给反代，这里不做任何 HTTPS 强制。
+      # 若想让容器在"反代漏配 TLS"时直接拒绝明文，再设 FORCE_HTTPS=1，
+      # 但那要求反代确实传了 X-Forwarded-Proto: https，否则整站 403。
+      FORCE_HTTPS: "${FORCE_HTTPS:-0}"
+
+      # 默认 0 = 容器不发 HSTS，交给反代发。下发是不可撤销的，
+      # 容器看不见上游证书能撑多久，误发会让整个域名一年内只能走 https。
+      HSTS_MAX_AGE: "${HSTS_MAX_AGE:-0}"
+    volumes:
+      # 必须挂卷：米家登录凭据、设备缓存、定时规则全在这里。
+      # 默认放在项目目录下的 ./data。想把数据放到别处（比如和别的服务
+      # 的数据卷放一起、或换到大容量卷），在 .env 里设绝对路径：
+      #   DATA_DIR=/path/to/your/mihome-data
+      # 注意该目录的属主必须是 PUID/PGID 对应的 uid，否则容器写不进去
+      # （启动日志会直接报"数据目录不可写"，不用猜）。
+      - "${DATA_DIR:-./data}:/data"

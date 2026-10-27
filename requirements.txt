@@ -1,0 +1,10 @@
+# 米家 API 封装（核心依赖，原项目锁定 5.x）
+# 上游大版本升级后务必回归：扫码登录、设备列表、开关写入、场景执行
+mijiaAPI>=5,<6
+
+# Web 框架
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+
+# 登录二维码渲染（纯 Python SVG 后端，不需要 pillow）
+qrcode>=8

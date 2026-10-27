@@ -1,0 +1,15 @@
+# 数据卷：含米家登录凭据（全账号权限），绝不能提交
+data/
+_testdata/
+
+# 环境变量（可能含 WEB_TOKEN）
+.env
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 日志
+*.log

@@ -1,0 +1,5 @@
+# 统一 LF：run-local.sh 和 YAML 在 CRLF 下会出错
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
